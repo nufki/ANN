@@ -109,3 +109,14 @@ This problem **cannot be solved with a single linear layer**, which makes it a p
 ## Disclaimer
 
 This project is intended for **educational purposes only**.
+
+
+## XOR Problem - Decision Boundry...
+![xor.png](images/xor.png)
+
+## 3 Class Problem - Decision Boundry...
+![3-class-problem.png](images/3-class-problem.png)
+
+## Again the 3 Class Problem with model overfitting....
+![3-class-problem-overfitting.png](images/3-class-problem-overfitting.png)
+

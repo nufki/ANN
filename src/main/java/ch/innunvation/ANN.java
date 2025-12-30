@@ -3,31 +3,32 @@ package ch.innunvation;
 import java.util.Random;
 
 public class ANN {
-    private final int nIn, nHidden, nOut;
+    private final int nIn;
+    private final int nHidden;
+    private final int nOut;
+
 
     // Default learning rate (optional convenience)
     private final double defaultLearningRate;
 
     // Weights and biases:
-    // w1: hidden x input
-    // b1: hidden
-    // w2: output x hidden
-    // b2: output
-    private final double[][] w1;
-    private final double[] b1;
-    private final double[][] w2;
-    private final double[] b2;
+    private final double[][] w1; // Weights from inputs → hidden layer (in the docu these are: w13, w14, w23, w24)
+    private final double[] b1; // Biases of hidden neurons (in the docu these are: bias of H3, H4)
+    private final double[][] w2; // Weights from hidden → output layer (in the docu these are: w35, w45)
+    private final double[] b2; // Biases of output neurons (in the docu this is O5)
 
     private final Random rnd;
 
-    // --- Constructors ---
-
-    /** Basic constructor (random seed not fixed, default LR = 0.1). */
+    /**
+     * Basic constructor (random seed not fixed, default LR = 0.1).
+     */
     public ANN(int inputs, int hiddenNeurons, int outputNeurons) {
         this(inputs, hiddenNeurons, outputNeurons, 0.1, new Random());
     }
 
-    /** Basic constructor with Random (default LR = 0.1). */
+    /**
+     * Basic constructor with Random (default LR = 0.1).
+     */
     public ANN(int inputs, int hiddenNeurons, int outputNeurons, Random random) {
         this(inputs, hiddenNeurons, outputNeurons, 0.1, random);
     }
@@ -37,13 +38,15 @@ public class ANN {
      * ANN ann = new ANN(2, 6, 3, 0.3, 42);
      *
      * @param defaultLearningRate used by train(X, Y, epochs)
-     * @param seed random seed for reproducible initialization
+     * @param seed                random seed for reproducible initialization
      */
     public ANN(int inputs, int hiddenNeurons, int outputNeurons, double defaultLearningRate, long seed) {
         this(inputs, hiddenNeurons, outputNeurons, defaultLearningRate, new Random(seed));
     }
 
-    /** Full constructor: specify default LR and Random. */
+    /**
+     * Full constructor: specify default LR and Random.
+     */
     public ANN(int inputs, int hiddenNeurons, int outputNeurons, double defaultLearningRate, Random random) {
         if (inputs <= 0 || hiddenNeurons <= 0 || outputNeurons <= 0) {
             throw new IllegalArgumentException("All layer sizes must be > 0.");
@@ -91,7 +94,9 @@ public class ANN {
         return a + (b - a) * rnd.nextDouble();
     }
 
-    /** Forward pass: returns output activations. */
+    /**
+     * Forward pass: returns output activations.
+     */
     public double[] apply(double[] x) {
         if (x == null || x.length != nIn) {
             throw new IllegalArgumentException("Input must have length " + nIn);
@@ -134,8 +139,8 @@ public class ANN {
 
         for (int e = 0; e < epochs; e++) {
             for (int s = 0; s < X.length; s++) {
-                double[] x = X[s];
-                double[] t = Y[s];
+                double[] x = X[s]; // input X[s]
+                double[] t = Y[s]; // Output Y[s]
 
                 if (x == null || x.length != nIn) {
                     throw new IllegalArgumentException("X[" + s + "] length != " + nIn);
@@ -144,15 +149,16 @@ public class ANN {
                     throw new IllegalArgumentException("Y[" + s + "] length != " + nOut);
                 }
 
-                // ----- forward (store activations for backprop) -----
+                // Forward propagation (store activations for backprop)
                 double[] h = new double[nHidden];
-
+                // Calculate front to hidden neuron activations
                 for (int i = 0; i < nHidden; i++) {
                     double z = b1[i];
                     for (int j = 0; j < nIn; j++) z += w1[i][j] * x[j];
                     h[i] = sigmoid(z);
                 }
 
+                // Calculate hidden to output neuron activations
                 double[] y = new double[nOut];
                 for (int k = 0; k < nOut; k++) {
                     double z = b2[k];
@@ -160,23 +166,28 @@ public class ANN {
                     y[k] = sigmoid(z);
                 }
 
-                // ----- backprop deltas -----
+                // Calculate backpropagation deltas (output neurons to hidden)
+                // Notes from my end: The code here uses a different notion than the theory attached as it calculates
+                // y[k] - t[k] instead of t[k] - y[k]. However, in the weight change routine, the weight delta is subtracted
+                // rather than summed which makes it identical. in fact, the loss function is defined as:
+                // L=1/2 * (y − t)^2 and the gradient thereof ⇒ ∂L/∂y = (y - t)
                 double[] deltaOut = new double[nOut];
                 for (int k = 0; k < nOut; k++) {
                     double dL_dy = (y[k] - t[k]);
-                    deltaOut[k] = dL_dy * sigmoidPrimeFromActivation(y[k]);
+                    deltaOut[k] = y[k] * (1.0 - y[k]) * dL_dy; // sigmoidPrimeFromActivation(y[k]);
                 }
 
+                // Calculate backpropagation deltas (hidden neurons to input)
                 double[] deltaHidden = new double[nHidden];
                 for (int i = 0; i < nHidden; i++) {
                     double sum = 0.0;
                     for (int k = 0; k < nOut; k++) {
                         sum += w2[k][i] * deltaOut[k];
                     }
-                    deltaHidden[i] = sum * sigmoidPrimeFromActivation(h[i]);
+                    deltaHidden[i] = sum * h[i] * (1.0 - h[i]);  // sigmoidPrimeFromActivation(h[i]);
                 }
 
-                // ----- gradient step -----
+                // Calculate gradient step (new weights) - hidden to output
                 for (int k = 0; k < nOut; k++) {
                     for (int i = 0; i < nHidden; i++) {
                         w2[k][i] -= learningRate * deltaOut[k] * h[i];
@@ -184,6 +195,7 @@ public class ANN {
                     b2[k] -= learningRate * deltaOut[k];
                 }
 
+                // Calculate gradient step (new weights) - input to hidden
                 for (int i = 0; i < nHidden; i++) {
                     for (int j = 0; j < nIn; j++) {
                         w1[i][j] -= learningRate * deltaHidden[i] * x[j];

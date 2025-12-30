@@ -1,8 +1,9 @@
 package ch.innunvation;
 
+import javax.swing.*;
 import java.util.Random;
 
-public class Main {
+public class XorExample {
 
     public static void main(String[] args) {
 
@@ -21,13 +22,32 @@ public class Main {
                 {0}
         };
 
+        int[] y = {0, 1, 1, 0};
+
         // 2 inputs, 3 hidden neurons, 1 output
         ANN ann = new ANN(2, 3, 1, new Random(42));
 
         // Train in one call
         int epochs = 50_000;
         double learningRate = 0.5;
-        ann.train(X, Y, epochs, learningRate);
+        ann.train(X, Y, epochs, learningRate); // add custom learning rate
+
+        // Visualize
+        BoundaryPanelBinary panel = new BoundaryPanelBinary(
+                ann, X, y,
+                -0.25, 1.25,   // x-range
+                -0.25, 1.25    // y-range
+        );
+        panel.rebuildBackground();
+
+        SwingUtilities.invokeLater(() -> {
+            JFrame f = new JFrame("Decision Boundary (XOR)");
+            f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            f.setContentPane(panel);
+            f.pack();
+            f.setLocationRelativeTo(null);
+            f.setVisible(true);
+        });
 
         // Evaluate
         for (double[] x : X) {

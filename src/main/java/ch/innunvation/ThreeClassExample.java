@@ -1,16 +1,15 @@
 package ch.innunvation;
 
+import javax.swing.*;
 import java.util.Arrays;
 
-
-public class MlpThreeClassExample {
+public class ThreeClassExample {
 
     public static void main(String[] args) {
-        // 2 inputs, 6 hidden neurons, 3 outputs, learningRate=0.3, seed=42
+        // If your ANN has (inputs, hidden, outputs, learningRate, seed) ctor:
         ANN ann = new ANN(2, 6, 3, 0.3, 42);
 
         // Training data: N samples, each with 2 inputs
-        // Labels: N samples, each with 3 outputs (one-hot)
         double[][] X = {
                 // Class 0 region (near 0,0)
                 {0.05, 0.05},
@@ -34,6 +33,7 @@ public class MlpThreeClassExample {
                 {0.10, 0.80},
         };
 
+        // One-hot labels: N samples, each with 3 outputs
         double[][] Y = {
                 // Class 0 -> [1,0,0]
                 {1, 0, 0},
@@ -57,23 +57,32 @@ public class MlpThreeClassExample {
                 {0, 0, 1},
         };
 
-        // Train
-        int epochs = 3000;
-        ann.train(X, Y, epochs, 1);
+
+        // Train (use a reasonable LR; 1.0 is usually too big for sigmoid+MSE)
+        int epochs = 500000;
+        ann.train(X, Y, epochs, 0.3);
+
+        // Visualize
+        JFrame f = new JFrame("3-Class Decision Boundary");
+        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        f.setContentPane(new BoundaryPanelMulti(ann, X, Y, 3));
+        f.pack();
+        f.setLocationRelativeTo(null);
+        f.setVisible(true);
 
         // Test a few points
-        test(ann, new double[]{0.08, 0.10}); // should be class 0-ish
-        test(ann, new double[]{0.92, 0.08}); // should be class 1-ish
-        test(ann, new double[]{0.05, 0.95}); // should be class 2-ish
+        test(ann, new double[]{0.08, 0.10}); // class 0-ish
+        test(ann, new double[]{0.92, 0.08}); // class 1-ish
+        test(ann, new double[]{0.05, 0.95}); // class 2-ish
 
-        // Some "in-between" points
-        test(ann, new double[]{0.60, 0.10}); // likely class 1 (closer to (1,0))
-        test(ann, new double[]{0.10, 0.60}); // likely class 2 (closer to (0,1))
-        test(ann, new double[]{0.35, 0.35}); // depends on your learned boundaries
+        // In-between points
+        test(ann, new double[]{0.60, 0.10});
+        test(ann, new double[]{0.10, 0.60});
+        test(ann, new double[]{0.35, 0.35});
     }
 
     private static void test(ANN ann, double[] x) {
-        double[] out = ann.apply(x); // expects length 3
+        double[] out = ann.apply(x);
         int predicted = argMax(out);
 
         System.out.println("x=" + Arrays.toString(x)

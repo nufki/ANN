@@ -103,7 +103,19 @@ for (double[] x : X) {
 
 ---
 
-## Real-World Application: Gender Classification from Face Images
+## Visualizations
+
+### XOR Problem - Decision Boundary
+![xor.png](readme-images/xor.png)
+
+### 3 Class Problem - Decision Boundary
+![3-class-problem.png](readme-images/3-class-problem.png)
+
+### 3 Class Problem with Model Overfitting
+![3-class-problem-overfitting.png](readme-images/3-class-problem-overfitting.png)
+
+
+## Real-World Application: Gender Classification from Face Images (Using my ANN Implementation)
 
 The **GenderClassifier** demonstrates the neural network applied to a practical computer vision task: classifying gender from facial photographs.
 
@@ -232,19 +244,119 @@ Early stopping at epoch 198 (no improvement for 100 epochs)
 
 ---
 
+
+## Real-World Application: Gender Classification from Face Images - CNN Variant
+
+In addition to the from-scratch MLP implementation, this project includes a **Convolutional Neural Network (CNN)** version using **Deeplearning4j** to demonstrate the performance difference between traditional fully-connected networks and modern CNN architectures.
+
+### Implementation: GenderClassifierCNN
+
+**Library**: [Deeplearning4j](https://deeplearning4j.konduit.ai/deeplearning4j/reference/multi-layer-network) - A deep learning library for the JVM
+
+**Architecture**:
+```
+Input: 48×48×1 grayscale
+  ↓
+Conv2D: 16 filters (3×3) + ReLU
+  ↓
+MaxPooling: 2×2
+  ↓
+Conv2D: 32 filters (3×3) + ReLU
+  ↓
+MaxPooling: 2×2
+  ↓
+Dense: 64 neurons + ReLU
+  ↓
+Output: 1 neuron (Sigmoid)
+
+Total Parameters: ~210,000
+```
+
+### Performance Comparison
+
+| Metric | MLP (From Scratch) | CNN (Deeplearning4j) |
+|--------|-------------------|---------------------|
+| **Test Accuracy** | 78% | **82%** |
+| **Training Time** | ~5 minutes | ~30 minutes |
+| **Parameters** | 73,793 | 209,729 |
+| **Complexity** | Simple | Complex |
+
+### Key Differences
+
+**MLP treats each pixel independently**:
+- No spatial awareness
+- Good for learning basic patterns
+- Fast to train
+- Educational implementation
+
+**CNN learns spatial features**:
+- Recognizes edges, textures, facial structures
+- Better generalization to new faces
+- Slower but more accurate
+- Production-ready via library
+
+### Maven Dependencies
+```xml
+<properties>
+    <dl4j.version>1.0.0-M2.1</dl4j.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>org.deeplearning4j</groupId>
+        <artifactId>deeplearning4j-core</artifactId>
+        <version>${dl4j.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.nd4j</groupId>
+        <artifactId>nd4j-native</artifactId>
+        <version>${dl4j.version}</version>
+    </dependency>
+</dependencies>
+```
+
+### Usage
+```java
+// Same dataset preparation as MLP version
+Dataset data = GenderClassifierCNN.loadDataset("src/main/resources/faces_dataset_cropped");
+Dataset[] split = GenderClassifierCNN.trainTestSplit(data, 0.8);
+
+// Create and train CNN
+GenderClassifierCNN cnn = new GenderClassifierCNN();
+cnn.train(trainData.features, trainData.labels, epochs: 100, batchSize: 32);
+
+// Evaluate
+double accuracy = cnn.accuracy(testData.features, testData.labels);
+// Expected: ~82% test accuracy
+```
+
+### Why CNNs Perform Better
+
+1. **Spatial locality** - Nearby pixels are processed together (e.g., both eyes, nose-mouth relationship)
+2. **Translation invariance** - Face can be slightly shifted and still recognized
+3. **Feature hierarchy** - Lower layers detect edges, higher layers detect facial features
+4. **Parameter sharing** - Same filter applied across entire image (fewer parameters than MLP for same capacity)
+
+### When to Use Each Approach
+
+**Use the MLP** for:
+- Understanding neural network fundamentals
+- Educational purposes
+- Quick prototyping
+- Limited computational resources
+
+**Use the CNN** for:
+- Best accuracy on image tasks
+- Production deployments
+- When training time is not critical
+- Modern deep learning workflows
+
+The **4% accuracy improvement** (78% → 82%) demonstrates why CNNs became the standard for computer vision tasks, while the MLP implementation provides valuable insight into how neural networks actually work under the hood.
+
+
 ## Disclaimer
 
 This project is intended for **educational purposes only**.
 
 ---
 
-## Visualizations
-
-### XOR Problem - Decision Boundary
-![xor.png](readme-images/xor.png)
-
-### 3 Class Problem - Decision Boundary
-![3-class-problem.png](readme-images/3-class-problem.png)
-
-### 3 Class Problem with Model Overfitting
-![3-class-problem-overfitting.png](readme-images/3-class-problem-overfitting.png)

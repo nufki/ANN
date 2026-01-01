@@ -1,11 +1,14 @@
-# Simple Java ANN (Multi-Layer Perceptron)
+# Fundamentals of Neural Networks (ANN's and CNN's) by Example
 
-This project contains a **small, self-contained implementation of a neural network**
-(also called a **Multi-Layer Perceptron**, MLP) written in plain Java.
+This project implements fundamental neural network concepts from scratch in Java, recapping backpropagation, gradient descent, and multilayer perceptrons or feed forward networks (MLPs resp. FFN's)
+that I mostly covered back in my studies and time affiliated with the Institute of Neuroinformatics at ETH Zürich.
 
-It is designed for **learning, experimenting, and understanding how neural networks work internally**.
+The simplest one demonstrates backpropagation and gradient descent basics for an MLP (Multi-Layer Perceptron), first applied to the classic XOR problem and then a more complex 3-class classification task.
+Finally, the same ANN implementation is then applied to a more realistic "real-world" computer vision problem: classifying gender from facial photos.
 
-No external libraries are used.
+Everything's written in plain Java with visualizations —at least for the 2D cases like XOR and 3-class. **It's built for learning, experimenting, and really getting how neural nets work under the hood**.
+
+No external libs except for the final CNN version using [Deeplearning4j](https://deeplearning4j.konduit.ai/deeplearning4j/reference/multi-layer-network), which tackles the same gender classification task.
 
 ---
 
@@ -99,6 +102,17 @@ for (double[] x : X) {
         "(" + (int)x[0] + ", " + (int)x[1] + ") -> " + out[0]
     );
 }
+```
+
+```
+Example output after 50,000 epochs:
+Input (0, 0) -> 0.0066
+Input (0, 1) -> 0.9930
+Input (1, 0) -> 0.9930
+Input (1, 1) -> 0.0059
+Final MSE = 4.3883104584561E-5
+
+So the network correctly classified all 4 samples on a non-linear decision boundary!
 ```
 
 ---

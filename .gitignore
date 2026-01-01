@@ -36,3 +36,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Raw Images
+/AdienceBenchmarkGenderAndAgeClassification/*
+/src/main/resources/faces_dataset/*

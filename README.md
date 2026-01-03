@@ -1,14 +1,23 @@
 # Fundamentals of Neural Networks (ANN's and CNN's) by Example
 
-This project implements fundamental neural network concepts from scratch in Java, recapping backpropagation, gradient descent, and multilayer perceptrons or feed forward networks (MLPs resp. FFN's)
-that I mostly covered back in my studies and time affiliated with the Institute of Neuroinformatics at ETH Zürich.
+This project implements fundamental neural network concepts from scratch in Java, recapping backpropagation, gradient descent, and multilayer perceptrons (MLPs) or feedforward networks (FFNs) that I mostly covered back in my studies and time affiliated with the Institute of Neuroinformatics at ETH Zürich.
 
-The simplest one demonstrates backpropagation and gradient descent basics for an MLP (Multi-Layer Perceptron), first applied to the classic XOR problem and then a more complex 3-class classification task.
-Finally, the same ANN implementation is then applied to a more realistic "real-world" computer vision problem: classifying gender from facial photos.
+The project progresses from simple to complex examples, all with visualizations:
 
-Everything's written in plain Java with visualizations —at least for the 2D cases like XOR and 3-class. **It's built for learning, experimenting, and really getting how neural nets work under the hood**.
+**Educational Examples** (2D visualizations):
+- **XOR Problem**: Classic binary classification demonstrating non-linear decision boundaries
+- **3-Class Problem**: Multi-class classification with one-hot encoding
+- **3-Class Overfitting**: Demonstrates model overfitting with contradictory labels
+- **4-Class Problem**: Extended multi-class classification
+- **Interactive 3-Class Trainer**: GUI tool for interactively creating datasets and visualizing decision boundaries in real-time
 
-No external libs except for the final CNN version using [Deeplearning4j](https://deeplearning4j.konduit.ai/deeplearning4j/reference/multi-layer-network), which tackles the same gender classification task.
+**Real-World Applications**:
+- **Gender Classification (MLP)**: From-scratch implementation applied to face image classification (48×48 grayscale images, ~80% accuracy)
+- **Gender Classification (CNN)**: Deeplearning4j-based CNN variant showing the performance difference between MLPs and CNNs (~82% accuracy)
+
+Everything's written in plain Java with interactive visualizations for all 2D classification problems. **It's built for learning, experimenting, and really getting how neural nets work under the hood**.
+
+**No external dependencies** except for the optional CNN comparison using [Deeplearning4j](https://deeplearning4j.konduit.ai/deeplearning4j/reference/multi-layer-network).
 
 ---
 

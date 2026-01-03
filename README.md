@@ -12,7 +12,10 @@ No external libs except for the final CNN version using [Deeplearning4j](https:/
 
 ---
 
-## What is implemented?
+## Feedforward Neural network or simply ANN (Artificial Neural Network)
+
+
+### The `ANN` class
 
 The `ANN` class implements:
 
@@ -24,9 +27,7 @@ The `ANN` class implements:
 - **Stochastic Gradient Descent (SGD)**
 - **Mean Squared Error (MSE)** loss
 
----
-
-## Network Structure
+### Network Structure
 
 The network structure is defined when creating an instance:
 ```java
@@ -44,23 +45,24 @@ Example:
 ANN ann = new ANN(2, 3, 1);
 ```
 
----
+### Core Methods
 
-## Core Methods
+```java
+void train(double[][] X, double[][] Y, int epochs, double learningRate);
+```
 
-### `double[] apply(double[] input)`
+Trains the network using supervised learning via backpropagation that minimizes Mean Squared Error (MSE)
+
+
+```java
+double[] apply(double[] input);
+```
 
 Runs a **forward pass** through the network.
 
 - Computes hidden layer activations
 - Computes output layer activations
 - Returns the network output
-
----
-
-### `void train(double[][] X, double[][] Y, int epochs, double learningRate)`
-
-Trains the network using supervised learning via backpropagation.
 
 ---
 
@@ -115,19 +117,150 @@ Final MSE = 4.3883104584561E-5
 So the network correctly classified all 4 samples on a non-linear decision boundary!
 ```
 
----
-
-## Visualizations
-
 ### XOR Problem - Decision Boundary
 ![xor.png](readme-images/xor.png)
+
+
+---
+
+
+### 3 Class Problem Example
+
+The 3-class problem extends binary classification to **multi-class classification**, demonstrating how neural networks can learn to separate data into three distinct regions. This is a fundamental step beyond the XOR problem, showing how networks handle more complex decision boundaries.
+
+#### Problem Description
+
+Three classes are arranged in distinct regions of the 2D input space:
+- **Class 0**: Points near (0, 0) - bottom-left corner
+- **Class 1**: Points near (1, 0) - bottom-right corner  
+- **Class 2**: Points near (0, 1) - top-left corner
+
+The network must learn to create **non-linear decision boundaries** that separate these three regions.
+
+#### Example Usage
+
+```java
+// Create network: 2 inputs, 6 hidden neurons, 3 outputs (one per class)
+ANN ann = new ANN(2, 6, 3, 0.3, 42);
+
+// Training data: 15 samples (5 per class)
+double[][] X = {
+    // Class 0 region (near 0,0)
+    {0.05, 0.05}, {0.10, 0.00}, {0.00, 0.15}, {0.12, 0.08}, {0.20, 0.10},
+    
+    // Class 1 region (near 1,0)
+    {0.90, 0.05}, {1.00, 0.10}, {0.85, 0.00}, {0.95, 0.15}, {0.80, 0.10},
+    
+    // Class 2 region (near 0,1)
+    {0.05, 0.90}, {0.10, 1.00}, {0.00, 0.85}, {0.15, 0.95}, {0.10, 0.80},
+};
+
+// One-hot encoded labels: [1,0,0] for Class 0, [0,1,0] for Class 1, [0,0,1] for Class 2
+double[][] Y = {
+    {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0, 0},  // Class 0
+    {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0},  // Class 1
+    {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {0, 0, 1},  // Class 2
+};
+
+// Train the network
+ann.train(X, Y, 500_000, 0.3);
+
+// Test predictions
+double[] out = ann.apply(new double[]{0.08, 0.10});  // Should predict Class 0
+int predictedClass = argMax(out);  // Returns index of highest output
+```
+
+#### Key Concepts
+
+**One-Hot Encoding**: Each class is represented as a binary vector where exactly one element is 1:
+- Class 0 → `[1, 0, 0]`
+- Class 1 → `[0, 1, 0]`
+- Class 2 → `[0, 0, 1]`
+
+**Multi-Class Classification**: The network outputs 3 values (one per class), and the class with the highest output is the prediction.
+
+**Decision Boundaries**: The network learns to create curved boundaries that separate the three regions, demonstrating its ability to handle non-linear, multi-class problems.
 
 ### 3 Class Problem - Decision Boundary
 ![3-class-problem.png](readme-images/3-class-problem.png)
 
-### 3 Class Problem with Model Overfitting
+The visualization shows three distinct regions (red, blue, green) separated by smooth decision boundaries. The network successfully learns to classify points into the correct regions based on their position in the 2D space.
+
+### The same 3 Class Problem that demonstrates model overfitting
 ![3-class-problem-overfitting.png](readme-images/3-class-problem-overfitting.png)
 
+This example demonstrates **overfitting** - when a model memorizes the training data instead of learning the general pattern. Notice how the decision boundaries are jagged and irregular, creating small "islands" around individual training points.
+
+#### What Causes Overfitting?
+
+1. **Too Few Training Samples**: Only 13 samples total (vs. 15 in the normal example)
+2. **Contradictory Labels**: Points are intentionally mislabeled for their location:
+   - A point near (0,0) labeled as Class 1
+   - A point near (1,0) labeled as Class 2
+   - A point near (0,1) labeled as Class 0
+3. **Outliers**: A central point (0.45, 0.45) forces the boundary to bend unnaturally
+
+#### The Problem
+
+The network has enough capacity (6 hidden neurons) to memorize these contradictions, but this creates boundaries that won't generalize to new data. The model "overfits" to the specific training points rather than learning the underlying pattern that Class 0 is near (0,0), Class 1 is near (1,0), and Class 2 is near (0,1).
+
+#### How to Prevent Overfitting
+
+- **More Training Data**: Increase the number of samples per class
+- **Remove Contradictions**: Ensure labels match the data distribution
+- **Regularization**: Reduce model complexity or add constraints
+- **Early Stopping**: Stop training before the model memorizes noise
+- **Validation Set**: Monitor performance on unseen data
+
+This visualization clearly shows the difference between a well-generalized model (smooth boundaries) and an overfitted model (jagged, irregular boundaries).
+
+---
+
+## Interactive 3 Class Problem
+
+The **InteractiveMLPTrainer** provides a graphical user interface for interactively creating training datasets, configuring MLP parameters, and visualizing decision boundaries in real-time. This tool makes it easy to experiment with different data distributions and network architectures.
+
+![Interactive MLP Trainer](readme-images/interactive-mlp.png)
+
+### Features
+
+- **Interactive Data Point Addition**: Click anywhere on the 2D plot to add training data points
+- **Class Selection**: Choose from 3 classes (Class 0, Class 1, Class 2) with color-coded buttons
+- **MLP Configuration**: Adjust network parameters:
+  - **Hidden Neurons**: Number of neurons in the hidden layer
+  - **Learning Rate**: Training step size
+  - **Epochs**: Number of training iterations
+- **Real-time Visualization**: See decision boundaries update immediately after training
+- **Clear Data**: Reset the dataset to start fresh
+
+### Howto
+
+1. **Select a Class**: Click one of the three class buttons (Class 0, Class 1, or Class 2) to choose which class you're adding points for
+   - Selected class button shows a colored border matching the class color
+   - Class 0: Red
+   - Class 1: Blue
+   - Class 2: Green
+
+2. **Add Training Data**: Click anywhere on the 2D plot to add data points
+   - Points appear immediately with their class color
+   - Status bar shows the coordinates and total point count
+
+3. **Configure MLP**: Set your desired network parameters
+   - **Hidden Neurons**: Typically 4-10 for simple problems, more for complex boundaries
+   - **Learning Rate**: Start with 0.1-0.5, adjust if training is too slow or unstable
+   - **Epochs**: 10,000-100,000 depending on problem complexity
+
+4. **Train Network**: Click the "Train" button to train the MLP
+   - Training runs in a background thread (UI remains responsive)
+   - Decision boundaries are visualized with color-coded regions
+   - Each region's opacity indicates prediction confidence
+
+5. **Experiment**: Try different configurations to see how they affect the decision boundary
+   - More hidden neurons = more complex boundaries
+   - Higher learning rate = faster training but may overshoot
+   - More epochs = better convergence (up to a point)
+
+---
 
 ## Real-World Application: Gender Classification from Face Images (Using my ANN Implementation)
 
@@ -155,6 +288,8 @@ The network processes each image as follows:
 2. **Forward pass**: 2,304 input neurons → 32 hidden neurons → 1 output neuron
 3. **Classification**: Output > 0.5 = Female, Output ≤ 0.5 = Male
 
+Shows how images are preprocessed (before and after resizing and converting)
+![prepcoess.png](readme-images/prepcoess.png)
 ### Dataset Preparation
 
 The classifier uses the **Adience Benchmark Gender and Age Classification** dataset from Kaggle:

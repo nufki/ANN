@@ -1,5 +1,9 @@
 package ch.innunvation.ann;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class ANN {
@@ -18,6 +22,54 @@ public class ANN {
     private final double[] b2; // Biases of output neurons (in the docu this is O5)
 
     private final Random rnd;
+    
+    // Weight history tracking for visualization
+    private static class WeightSnapshot {
+        final double w1;
+        final double w2;
+        final int updateCount;
+        
+        WeightSnapshot(double w1, double w2, int updateCount) {
+            this.w1 = w1;
+            this.w2 = w2;
+            this.updateCount = updateCount;
+        }
+    }
+    
+    private static class WeightKey {
+        final int hiddenIdx1, inputIdx1, hiddenIdx2, inputIdx2;
+        
+        WeightKey(int hiddenIdx1, int inputIdx1, int hiddenIdx2, int inputIdx2) {
+            this.hiddenIdx1 = hiddenIdx1;
+            this.inputIdx1 = inputIdx1;
+            this.hiddenIdx2 = hiddenIdx2;
+            this.inputIdx2 = inputIdx2;
+        }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            WeightKey weightKey = (WeightKey) o;
+            return hiddenIdx1 == weightKey.hiddenIdx1 &&
+                   inputIdx1 == weightKey.inputIdx1 &&
+                   hiddenIdx2 == weightKey.hiddenIdx2 &&
+                   inputIdx2 == weightKey.inputIdx2;
+        }
+        
+        @Override
+        public int hashCode() {
+            int result = hiddenIdx1;
+            result = 31 * result + inputIdx1;
+            result = 31 * result + hiddenIdx2;
+            result = 31 * result + inputIdx2;
+            return result;
+        }
+    }
+    
+    private Map<WeightKey, List<WeightSnapshot>> weightHistories;
+    private int updateCounter;
+    private int totalUpdates;
 
     /**
      * Basic constructor (random seed not fixed, default LR = 0.1).
@@ -73,6 +125,8 @@ public class ANN {
     }
 
     // Xavier/Glorot-ish uniform init for sigmoid
+    // Drawing from a gaussian distribution with a mean of 0
+    // range = sqrt (6 / (n_inputs + n_outputs))
     private void initWeights() {
         initMatrix(w1, Math.sqrt(6.0 / (nIn + nHidden)));
         initMatrix(w2, Math.sqrt(6.0 / (nHidden + nOut)));
@@ -127,6 +181,57 @@ public class ANN {
     }
 
     /**
+     * Enables weight history tracking for a specific weight pair during training.
+     * Can be called multiple times to track multiple weight pairs.
+     * @param hiddenIdx1 hidden neuron index for first weight
+     * @param inputIdx1 input index for first weight
+     * @param hiddenIdx2 hidden neuron index for second weight
+     * @param inputIdx2 input index for second weight
+     */
+    public void enableWeightHistoryTracking(int hiddenIdx1, int inputIdx1, int hiddenIdx2, int inputIdx2) {
+        if (hiddenIdx1 < 0 || hiddenIdx1 >= nHidden || inputIdx1 < 0 || inputIdx1 >= nIn ||
+            hiddenIdx2 < 0 || hiddenIdx2 >= nHidden || inputIdx2 < 0 || inputIdx2 >= nIn) {
+            throw new IllegalArgumentException("Invalid weight indices for tracking");
+        }
+        if (weightHistories == null) {
+            weightHistories = new HashMap<>();
+        }
+        WeightKey key = new WeightKey(hiddenIdx1, inputIdx1, hiddenIdx2, inputIdx2);
+        weightHistories.put(key, new ArrayList<>());
+    }
+    
+    /**
+     * Disables weight history tracking for all weight pairs.
+     */
+    public void disableWeightHistoryTracking() {
+        this.weightHistories = null;
+    }
+    
+    /**
+     * Gets the weight history for a specific weight pair if tracking was enabled during training.
+     * @param hiddenIdx1 hidden neuron index for first weight
+     * @param inputIdx1 input index for first weight
+     * @param hiddenIdx2 hidden neuron index for second weight
+     * @param inputIdx2 input index for second weight
+     * @return list of [w1, w2] pairs, or null if tracking was not enabled for this pair
+     */
+    public List<double[]> getWeightHistory(int hiddenIdx1, int inputIdx1, int hiddenIdx2, int inputIdx2) {
+        if (weightHistories == null) {
+            return null;
+        }
+        WeightKey key = new WeightKey(hiddenIdx1, inputIdx1, hiddenIdx2, inputIdx2);
+        List<WeightSnapshot> history = weightHistories.get(key);
+        if (history == null) {
+            return null;
+        }
+        List<double[]> result = new ArrayList<>();
+        for (WeightSnapshot snap : history) {
+            result.add(new double[]{snap.w1, snap.w2});
+        }
+        return result;
+    }
+    
+    /**
      * Trains with SGD on mean squared error (MSE) using backprop.
      * X: samples x nIn
      * Y: samples x nOut
@@ -136,6 +241,21 @@ public class ANN {
         if (X.length != Y.length) throw new IllegalArgumentException("X and Y must have same #samples.");
         if (epochs <= 0) throw new IllegalArgumentException("epochs must be > 0.");
         if (learningRate <= 0) throw new IllegalArgumentException("learningRate must be > 0.");
+
+        // Initialize tracking if enabled
+        if (weightHistories != null && !weightHistories.isEmpty()) {
+            totalUpdates = epochs * X.length;
+            updateCounter = 0;
+            // Record initial weights for all tracked pairs
+            for (Map.Entry<WeightKey, List<WeightSnapshot>> entry : weightHistories.entrySet()) {
+                WeightKey key = entry.getKey();
+                entry.getValue().add(new WeightSnapshot(
+                    w1[key.hiddenIdx1][key.inputIdx1],
+                    w1[key.hiddenIdx2][key.inputIdx2],
+                    0
+                ));
+            }
+        }
 
         for (int e = 0; e < epochs; e++) {
             for (int s = 0; s < X.length; s++) {
@@ -213,6 +333,34 @@ public class ANN {
                     }
                     b1[i] -= learningRate * deltaHidden[i];
                 }
+                
+                // Asymptotic sampling of weights for visualization
+                // Sample more frequently at the beginning, less frequently as training progresses
+                if (weightHistories != null && !weightHistories.isEmpty()) {
+                    updateCounter++;
+                    // Asymptotic sampling: interval grows exponentially
+                    // Early: sample every ~10 updates, later: sample every ~1000+ updates
+                    double progress = (double) updateCounter / totalUpdates;
+                    // Base interval grows from 1 to maxInterval based on progress
+                    // Using exponential growth: baseInterval = 1 + (maxInterval - 1) * (1 - exp(-progress * k))
+                    double maxInterval = 1000.0; // Maximum sampling interval near the end
+                    double k = 3.0; // Controls growth rate
+                    double baseInterval = 1.0 + (maxInterval - 1.0) * (1.0 - Math.exp(-progress * k));
+                    int currentInterval = (int) Math.max(1, Math.round(baseInterval));
+                    
+                    // Sample at regular intervals, but interval increases over time
+                    if (updateCounter % currentInterval == 0 || updateCounter == totalUpdates) {
+                        // Record for all tracked weight pairs
+                        for (Map.Entry<WeightKey, List<WeightSnapshot>> entry : weightHistories.entrySet()) {
+                            WeightKey key = entry.getKey();
+                            entry.getValue().add(new WeightSnapshot(
+                                w1[key.hiddenIdx1][key.inputIdx1],
+                                w1[key.hiddenIdx2][key.inputIdx2],
+                                updateCounter
+                            ));
+                        }
+                    }
+                }
             }
         }
     }
@@ -240,6 +388,78 @@ public class ANN {
             }
         }
         return sum / (n * nOut);
+    }
+    
+    /**
+     * Computes MSE with temporarily modified weights for error surface visualization.
+     * This method temporarily modifies specific weights, computes error, then restores them.
+     * NOTE: This modifies the network weights temporarily - use with caution in multi-threaded environments.
+     * 
+     * @param X training inputs
+     * @param Y training outputs
+     * @param hiddenIdx which hidden neuron's weights to modify (0-based)
+     * @param inputIdx1 first input weight index to modify
+     * @param inputIdx2 second input weight index to modify
+     * @param w1Value new value for first weight
+     * @param w2Value new value for second weight
+     * @return MSE with modified weights
+     */
+    public synchronized double mseWithModifiedWeights(double[][] X, double[][] Y, 
+                                         int hiddenIdx, int inputIdx1, int inputIdx2,
+                                         double w1Value, double w2Value) {
+        // Save original weights
+        double originalW1 = w1[hiddenIdx][inputIdx1];
+        double originalW2 = w1[hiddenIdx][inputIdx2];
+        
+        try {
+            // Temporarily modify weights
+            w1[hiddenIdx][inputIdx1] = w1Value;
+            w1[hiddenIdx][inputIdx2] = w2Value;
+            
+            // Compute error
+            return mse(X, Y);
+        } finally {
+            // Always restore original weights, even if an exception occurs
+            w1[hiddenIdx][inputIdx1] = originalW1;
+            w1[hiddenIdx][inputIdx2] = originalW2;
+        }
+    }
+    
+    /**
+     * Gets a specific weight value (for visualization purposes)
+     */
+    public double getWeight(int layer, int fromIdx, int toIdx) {
+        if (layer == 1) {
+            return w1[toIdx][fromIdx];
+        } else if (layer == 2) {
+            return w2[toIdx][fromIdx];
+        }
+        throw new IllegalArgumentException("Invalid layer: " + layer);
+    }
+    
+    /**
+     * Computes MSE with two weights from potentially different hidden neurons modified.
+     * This is a more general version for error surface visualization.
+     */
+    public synchronized double mseWithTwoModifiedWeights(double[][] X, double[][] Y,
+                                                        int hiddenIdx1, int inputIdx1, double w1Value,
+                                                        int hiddenIdx2, int inputIdx2, double w2Value) {
+        // Save original weights
+        double originalW1 = w1[hiddenIdx1][inputIdx1];
+        double originalW2 = w1[hiddenIdx2][inputIdx2];
+        
+        try {
+            // Temporarily modify weights
+            w1[hiddenIdx1][inputIdx1] = w1Value;
+            w1[hiddenIdx2][inputIdx2] = w2Value;
+            
+            // Compute error
+            return mse(X, Y);
+        } finally {
+            // Always restore original weights, even if an exception occurs
+            w1[hiddenIdx1][inputIdx1] = originalW1;
+            w1[hiddenIdx2][inputIdx2] = originalW2;
+        }
     }
 }
 

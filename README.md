@@ -240,6 +240,8 @@ The **InteractiveMLPTrainer** provides a graphical user interface for interactiv
   - **Learning Rate**: Training step size
   - **Epochs**: Number of training iterations
 - **Real-time Visualization**: See decision boundaries update immediately after training
+- **3D Error Surface Visualization**: Explore the error landscape as a function of weight values
+- **Training Path Visualization**: See how weights evolve during training on the error surface
 - **Clear Data**: Reset the dataset to start fresh
 
 ### Howto
@@ -263,11 +265,58 @@ The **InteractiveMLPTrainer** provides a graphical user interface for interactiv
    - Training runs in a background thread (UI remains responsive)
    - Decision boundaries are visualized with color-coded regions
    - Each region's opacity indicates prediction confidence
+   - After training completes, an **Error Surface Visualization** dialog automatically opens
 
-5. **Experiment**: Try different configurations to see how they affect the decision boundary
+5. **Explore Error Surfaces**: The error surface dialog shows 6 different weight pair visualizations in a 3×2 grid:
+   - **Row 1**: Different hidden neurons, both input weights (e.g., w1[0][0] vs w1[0][1])
+   - **Row 2**: Cross-neuron comparisons for the same input (e.g., w1[0][0] vs w1[1][0])
+   - Each panel shows:
+     - **3D Error Surface**: Color-coded error landscape (red = high error, green = low error)
+     - **Initial Weight Position**: Black dot marking where training started
+     - **Final Weight Position**: Red dot marking where training ended
+     - **Training Path**: Black line showing the weight trajectory during training
+   - **Interactive Controls**:
+     - **Drag**: Rotate the 3D view
+     - **Scroll**: Zoom in/out
+     - **Axes**: Blue arrows for weight dimensions (W1, W2), red arrow for error (Err)
+
+6. **Experiment**: Try different configurations to see how they affect the decision boundary
    - More hidden neurons = more complex boundaries
    - Higher learning rate = faster training but may overshoot
    - More epochs = better convergence (up to a point)
+
+### Error Surface Visualization
+
+The error surface visualization provides deep insight into the training process by showing how the loss function changes as a function of two weight values. This is a **2D slice** of the full high-dimensional weight space - all other weights are held constant at their trained values.
+
+![Error Surface Visualization](readme-images/error-surface.png)
+
+#### Understanding the Visualization
+
+- **Error Surface**: The colored wireframe shows the Mean Squared Error (MSE) for different combinations of two weights
+  - **Green regions**: Low error (good weight combinations)
+  - **Red regions**: High error (poor weight combinations)
+  - The surface reveals valleys (minima), ridges, and plateaus in the loss landscape
+
+- **Training Path**: The black line traces the weight trajectory from initialization to convergence
+  - Shows how gradient descent navigates the error landscape
+  - **Asymptotic Sampling**: More samples are taken early in training (when changes are larger) and fewer samples later (when converging)
+  - Reveals whether training follows a smooth path or takes detours
+
+- **Weight Positions**:
+  - **Black dot**: Initial weight values (before training)
+  - **Red dot**: Final weight values (after training)
+  - The path connects these points, showing the optimization journey
+
+#### Why This Matters
+
+1. **Understanding Optimization**: See how gradient descent actually works in practice
+2. **Diagnosing Problems**: 
+   - Long, winding paths suggest difficult optimization
+   - Paths that don't reach low-error regions indicate training issues
+   - Multiple local minima can trap the optimizer
+3. **Hyperparameter Tuning**: Different learning rates create different paths - observe which settings lead to smoother convergence
+4. **Visual Learning**: Makes abstract concepts (gradients, loss landscapes) tangible
 
 ---
 

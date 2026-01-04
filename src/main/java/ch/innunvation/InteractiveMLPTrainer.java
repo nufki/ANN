@@ -2,6 +2,8 @@ package ch.innunvation;
 
 import ch.innunvation.ann.ANN;
 
+import ch.innunvation.ui.ErrorSurfacePanel;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -44,6 +46,7 @@ public class InteractiveMLPTrainer extends JFrame {
     
     // MLP instance
     private ANN ann = null;
+    private ANN initialANN = null; // Store initial weights before training
     
     public InteractiveMLPTrainer() {
         setTitle("Interactive MLP Trainer - 3 Classes");
@@ -243,6 +246,28 @@ public class InteractiveMLPTrainer extends JFrame {
         new Thread(() -> {
             try {
                 ann = new ANN(2, hiddenNeurons, NUM_CLASSES, learningRate, 42);
+                // Store initial weights by creating a copy before training
+                initialANN = createANNCopy(ann);
+                
+                // Enable weight history tracking for all weight pairs we'll visualize
+                // This includes various combinations of hidden neurons and inputs
+                for (int h1 = 0; h1 < hiddenNeurons && h1 < 3; h1++) {
+                    for (int h2 = 0; h2 < hiddenNeurons && h2 < 3; h2++) {
+                        // Track same neuron, different inputs
+                        if (h1 == h2 && h1 < hiddenNeurons) {
+                            ann.enableWeightHistoryTracking(h1, 0, h1, 1);
+                        }
+                        // Track different neurons, same input
+                        if (h1 != h2) {
+                            ann.enableWeightHistoryTracking(h1, 0, h2, 0);
+                        }
+                    }
+                }
+                // Also track first neuron's weights in case we have fewer than 3 neurons
+                if (hiddenNeurons >= 1) {
+                    ann.enableWeightHistoryTracking(0, 0, 0, 1);
+                }
+                
                 ann.train(X, Y, epochs, learningRate);
                 
                 // Update visualization on EDT
@@ -252,6 +277,9 @@ public class InteractiveMLPTrainer extends JFrame {
                     statusLabel.setText(String.format("Training complete! Hidden neurons: %d, Learning rate: %.3f, Epochs: %d",
                         hiddenNeurons, learningRate, epochs));
                     trainButton.setEnabled(true);
+                    
+                    // Show error surface dialog
+                    showErrorSurfaceDialog();
                 });
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
@@ -276,10 +304,265 @@ public class InteractiveMLPTrainer extends JFrame {
             XArray = new double[0][];
             YArray = new double[0][];
             ann = null;
+            initialANN = null;
             plotPanel.setTrainingData(XArray, YArray);
             plotPanel.setANN(null);
             plotPanel.repaint();
             statusLabel.setText("Data cleared. Click on the plot to add training data points.");
+        }
+    }
+    
+    private void showErrorSurfaceDialog() {
+        if (ann == null || XArray.length == 0) {
+            return;
+        }
+        
+        JDialog dialog = new JDialog(this, "Error Surface Visualization - Multiple Weight Configurations", true);
+        dialog.setLayout(new BorderLayout());
+        
+        // Get network dimensions to determine which weights to show
+        int nHidden = getHiddenNeurons(ann);
+        
+        // Create 6 different weight configurations to visualize
+        // Using 3x2 grid layout (3 columns, 2 rows) with even spacing
+        JPanel gridPanel = new JPanel(new GridLayout(2, 3, 8, 8));
+        gridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        gridPanel.setBackground(Color.WHITE);
+        
+        // Define 6 weight pairs to visualize (most important ones)
+        ErrorSurfacePanel[] panels = new ErrorSurfacePanel[6];
+        int[][] weightPairs = new int[6][4]; // [hiddenIdx1, inputIdx1, hiddenIdx2, inputIdx2]
+        
+        // Row 1: Different hidden neurons, both inputs
+        // Panel 1: First hidden neuron, both inputs
+        weightPairs[0] = new int[]{0, 0, 0, 1};
+        panels[0] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+            weightPairs[0][0], weightPairs[0][1], weightPairs[0][2], weightPairs[0][3], 
+            "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[0][0], weightPairs[0][1], weightPairs[0][2], weightPairs[0][3]));
+        
+        // Panel 2: Second hidden neuron, both inputs
+        if (nHidden > 1) {
+            weightPairs[1] = new int[]{1, 0, 1, 1};
+            panels[1] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[1][0], weightPairs[1][1], weightPairs[1][2], weightPairs[1][3], 
+                "w1[1][0] vs w1[1][1]", ann.getWeightHistory(weightPairs[1][0], weightPairs[1][1], weightPairs[1][2], weightPairs[1][3]));
+        } else {
+            weightPairs[1] = new int[]{0, 0, 0, 1};
+            panels[1] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[1][0], weightPairs[1][1], weightPairs[1][2], weightPairs[1][3], 
+                "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[1][0], weightPairs[1][1], weightPairs[1][2], weightPairs[1][3]));
+        }
+        
+        // Panel 3: Third hidden neuron, both inputs
+        if (nHidden > 2) {
+            weightPairs[2] = new int[]{2, 0, 2, 1};
+            panels[2] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[2][0], weightPairs[2][1], weightPairs[2][2], weightPairs[2][3], 
+                "w1[2][0] vs w1[2][1]", ann.getWeightHistory(weightPairs[2][0], weightPairs[2][1], weightPairs[2][2], weightPairs[2][3]));
+        } else {
+            weightPairs[2] = new int[]{0, 0, 0, 1};
+            panels[2] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[2][0], weightPairs[2][1], weightPairs[2][2], weightPairs[2][3], 
+                "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[2][0], weightPairs[2][1], weightPairs[2][2], weightPairs[2][3]));
+        }
+        
+        // Row 2: Cross-neuron comparisons, input 0
+        // Panel 4: Hidden neurons 0 and 1, input 0
+        if (nHidden > 1) {
+            weightPairs[3] = new int[]{0, 0, 1, 0};
+            panels[3] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[3][0], weightPairs[3][1], weightPairs[3][2], weightPairs[3][3], 
+                "w1[0][0] vs w1[1][0]", ann.getWeightHistory(weightPairs[3][0], weightPairs[3][1], weightPairs[3][2], weightPairs[3][3]));
+        } else {
+            weightPairs[3] = new int[]{0, 0, 0, 1};
+            panels[3] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[3][0], weightPairs[3][1], weightPairs[3][2], weightPairs[3][3], 
+                "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[3][0], weightPairs[3][1], weightPairs[3][2], weightPairs[3][3]));
+        }
+        
+        // Panel 5: Hidden neurons 1 and 2, input 0
+        if (nHidden > 2) {
+            weightPairs[4] = new int[]{1, 0, 2, 0};
+            panels[4] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3], 
+                "w1[1][0] vs w1[2][0]", ann.getWeightHistory(weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3]));
+        } else if (nHidden > 1) {
+            weightPairs[4] = new int[]{0, 0, 1, 0};
+            panels[4] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3], 
+                "w1[0][0] vs w1[1][0]", ann.getWeightHistory(weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3]));
+        } else {
+            weightPairs[4] = new int[]{0, 0, 0, 1};
+            panels[4] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3], 
+                "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[4][0], weightPairs[4][1], weightPairs[4][2], weightPairs[4][3]));
+        }
+        
+        // Panel 6: Hidden neurons 0 and 2, input 0
+        if (nHidden > 2) {
+            weightPairs[5] = new int[]{0, 0, 2, 0};
+            panels[5] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[5][0], weightPairs[5][1], weightPairs[5][2], weightPairs[5][3], 
+                "w1[0][0] vs w1[2][0]", ann.getWeightHistory(weightPairs[5][0], weightPairs[5][1], weightPairs[5][2], weightPairs[5][3]));
+        } else {
+            weightPairs[5] = new int[]{0, 0, 0, 1};
+            panels[5] = new ErrorSurfacePanel(ann, initialANN, XArray, YArray, 
+                weightPairs[5][0], weightPairs[5][1], weightPairs[5][2], weightPairs[5][3], 
+                "w1[0][0] vs w1[0][1]", ann.getWeightHistory(weightPairs[5][0], weightPairs[5][1], weightPairs[5][2], weightPairs[5][3]));
+        }
+        
+        // Add all panels to grid with centered borders
+        for (ErrorSurfacePanel panel : panels) {
+            JPanel container = new JPanel(new BorderLayout());
+            container.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(),
+                panel.getWeightDescription(),
+                javax.swing.border.TitledBorder.CENTER,
+                javax.swing.border.TitledBorder.TOP,
+                new Font(Font.SANS_SERIF, Font.BOLD, 10) // Smaller font
+            ));
+            container.setBackground(Color.WHITE);
+            container.setOpaque(true);
+            // Add panel directly - don't wrap in another panel
+            container.add(panel, BorderLayout.CENTER);
+            gridPanel.add(container);
+            
+            // Force panel to be visible and validate
+            panel.setVisible(true);
+            panel.setOpaque(true);
+        }
+        
+        // Add grid directly (no scroll pane) so it fits fullscreen
+        dialog.add(gridPanel, BorderLayout.CENTER);
+        
+        // Add info panel (compact)
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder("Visualization Info"),
+            BorderFactory.createEmptyBorder(3, 8, 3, 8)
+        ));
+        infoPanel.setBackground(Color.WHITE);
+        
+        int totalParams = getTotalParameters(ann);
+        String infoText = String.format(
+            "6 different 2D slices of the error surface. Total parameters: %d. Drag to rotate, scroll to zoom.",
+            totalParams
+        );
+        
+        JLabel infoLabel = new JLabel(infoText);
+        infoLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 10));
+        infoPanel.add(infoLabel);
+        
+        dialog.add(infoPanel, BorderLayout.NORTH);
+        
+        // Add close button (compact)
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        JButton closeButton = new JButton("Close");
+        closeButton.setPreferredSize(new Dimension(80, 25));
+        closeButton.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        
+        // Set dialog size to fit fullscreen (slightly smaller than screen)
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        Dimension screenSize = toolkit.getScreenSize();
+        dialog.setSize((int)(screenSize.width * 0.95), (int)(screenSize.height * 0.95));
+        dialog.setLocationRelativeTo(this);
+        
+        // Validate and pack to ensure components are laid out
+        dialog.validate();
+        dialog.setVisible(true);
+    }
+    
+    private int getHiddenNeurons(ANN ann) {
+        try {
+            java.lang.reflect.Field field = ANN.class.getDeclaredField("nHidden");
+            field.setAccessible(true);
+            return field.getInt(ann);
+        } catch (Exception e) {
+            return 6; // Default
+        }
+    }
+    
+    private int getTotalParameters(ANN ann) {
+        try {
+            java.lang.reflect.Field nInField = ANN.class.getDeclaredField("nIn");
+            java.lang.reflect.Field nHiddenField = ANN.class.getDeclaredField("nHidden");
+            java.lang.reflect.Field nOutField = ANN.class.getDeclaredField("nOut");
+            nInField.setAccessible(true);
+            nHiddenField.setAccessible(true);
+            nOutField.setAccessible(true);
+            
+            int nIn = nInField.getInt(ann);
+            int nHidden = nHiddenField.getInt(ann);
+            int nOut = nOutField.getInt(ann);
+            
+            return (nIn * nHidden) + nHidden + (nHidden * nOut) + nOut;
+        } catch (Exception e) {
+            return 39; // Default estimate
+        }
+    }
+    
+    /**
+     * Creates a copy of an ANN with the same initial weights
+     */
+    private ANN createANNCopy(ANN original) {
+        try {
+            java.lang.reflect.Field nInField = ANN.class.getDeclaredField("nIn");
+            java.lang.reflect.Field nHiddenField = ANN.class.getDeclaredField("nHidden");
+            java.lang.reflect.Field nOutField = ANN.class.getDeclaredField("nOut");
+            java.lang.reflect.Field w1Field = ANN.class.getDeclaredField("w1");
+            java.lang.reflect.Field b1Field = ANN.class.getDeclaredField("b1");
+            java.lang.reflect.Field w2Field = ANN.class.getDeclaredField("w2");
+            java.lang.reflect.Field b2Field = ANN.class.getDeclaredField("b2");
+            java.lang.reflect.Field defaultLRField = ANN.class.getDeclaredField("defaultLearningRate");
+            
+            nInField.setAccessible(true);
+            nHiddenField.setAccessible(true);
+            nOutField.setAccessible(true);
+            w1Field.setAccessible(true);
+            b1Field.setAccessible(true);
+            w2Field.setAccessible(true);
+            b2Field.setAccessible(true);
+            defaultLRField.setAccessible(true);
+            
+            int nIn = nInField.getInt(original);
+            int nHidden = nHiddenField.getInt(original);
+            int nOut = nOutField.getInt(original);
+            double defaultLR = defaultLRField.getDouble(original);
+            
+            // Create new ANN with same seed to get same initial weights
+            // Actually, we need to copy the weights manually since we can't control the seed
+            ANN copy = new ANN(nIn, nHidden, nOut, defaultLR, new java.util.Random());
+            
+            // Copy weights and biases
+            double[][] w1 = (double[][]) w1Field.get(original);
+            double[] b1 = (double[]) b1Field.get(original);
+            double[][] w2 = (double[][]) w2Field.get(original);
+            double[] b2 = (double[]) b2Field.get(original);
+            
+            double[][] copyW1 = (double[][]) w1Field.get(copy);
+            double[] copyB1 = (double[]) b1Field.get(copy);
+            double[][] copyW2 = (double[][]) w2Field.get(copy);
+            double[] copyB2 = (double[]) b2Field.get(copy);
+            
+            // Deep copy weights
+            for (int i = 0; i < w1.length; i++) {
+                System.arraycopy(w1[i], 0, copyW1[i], 0, w1[i].length);
+            }
+            System.arraycopy(b1, 0, copyB1, 0, b1.length);
+            for (int i = 0; i < w2.length; i++) {
+                System.arraycopy(w2[i], 0, copyW2[i], 0, w2[i].length);
+            }
+            System.arraycopy(b2, 0, copyB2, 0, b2.length);
+            
+            return copy;
+        } catch (Exception e) {
+            System.err.println("Error creating ANN copy: " + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
     }
     
@@ -354,6 +637,9 @@ public class InteractiveMLPTrainer extends JFrame {
             this.ann = ann;
             if (ann != null) {
                 buildBackground();
+            } else {
+                // Clear background when ANN is null (e.g., when data is cleared)
+                background = null;
             }
             repaint();
         }

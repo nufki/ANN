@@ -9,7 +9,7 @@ The project progresses from simple to complex examples, all with visualizations:
 - **3-Class Problem**: Multi-class classification with one-hot encoding
 - **3-Class Overfitting**: Demonstrates model overfitting with contradictory labels
 - **4-Class Problem**: Extended multi-class classification
-- **Interactive 3-Class Trainer**: GUI tool for interactively creating datasets and visualizing decision boundaries in real-time
+- **Interactive 3-Class Trainer**: GUI tool for interactively creating datasets and visualizing decision boundaries in real-time as well as an **Error Surface Visualization** that allows to explore the error landscape as a function of weight values!
 
 **Real-World Applications**:
 - **Gender Classification (MLP)**: From-scratch implementation applied to face image classification (48×48 grayscale images, ~80% accuracy)

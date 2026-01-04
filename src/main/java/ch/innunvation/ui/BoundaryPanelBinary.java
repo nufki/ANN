@@ -123,6 +123,9 @@ public class BoundaryPanelBinary extends JPanel {
         // Axes + ticks + labels
         drawAxes(g2, px0, py0, pw, ph);
 
+        // Draw legend
+        drawLegend(g2, px0, py0, pw, ph);
+
         g2.dispose();
     }
 
@@ -194,6 +197,45 @@ public class BoundaryPanelBinary extends JPanel {
 
     private static double lerp(double a, double b, double t) {
         return a + (b - a) * t;
+    }
+
+    private void drawLegend(Graphics2D g2, int px0, int py0, int pw, int ph) {
+        // Legend position: top-right corner, inside plot area
+        int legendX = px0 + pw - 130;
+        int legendY = py0 + 15;
+        int legendWidth = 120;
+        int legendHeight = 55;
+        
+        // Draw legend background with slight transparency
+        g2.setColor(new Color(255, 255, 255, 240));
+        g2.fillRoundRect(legendX, legendY, legendWidth, legendHeight, 5, 5);
+        g2.setColor(new Color(200, 200, 200, 200));
+        g2.setStroke(new BasicStroke(1.0f));
+        g2.drawRoundRect(legendX, legendY, legendWidth, legendHeight, 5, 5);
+        
+        // Draw legend title
+        g2.setColor(Color.BLACK);
+        String title = "Legend";
+        g2.drawString(title, legendX + 5, legendY + 15);
+        
+        // Draw Output 0 entry (red)
+        int markerSize = 6;
+        int y1 = legendY + 28;
+        g2.setColor(new Color(200, 30, 30));
+        g2.fillOval(legendX + 5, y1 - markerSize, 2 * markerSize, 2 * markerSize);
+        g2.setColor(Color.BLACK);
+        g2.drawOval(legendX + 5, y1 - markerSize, 2 * markerSize, 2 * markerSize);
+        g2.setColor(Color.BLACK);
+        g2.drawString("Output = 0", legendX + 20, y1 + 4);
+        
+        // Draw Output 1 entry (blue)
+        int y2 = legendY + 45;
+        g2.setColor(new Color(30, 90, 200));
+        g2.fillOval(legendX + 5, y2 - markerSize, 2 * markerSize, 2 * markerSize);
+        g2.setColor(Color.BLACK);
+        g2.drawOval(legendX + 5, y2 - markerSize, 2 * markerSize, 2 * markerSize);
+        g2.setColor(Color.BLACK);
+        g2.drawString("Output = 1", legendX + 20, y2 + 4);
     }
 
     private static Color blend(Color a, Color b, double t) {
